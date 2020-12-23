@@ -2,12 +2,15 @@
 using AForge.Video.DirectShow;
 using System;
 using System.Collections.Generic;
+using System.Data;
 using System.Drawing;
 using System.Drawing.Imaging;
 using System.IO;
 using System.Linq;
 using System.Threading;
 using System.Windows.Forms;
+
+using MySql.Data.MySqlClient;
 
 namespace FaceCheckIn_App
 {
@@ -40,6 +43,24 @@ namespace FaceCheckIn_App
             }
 
             users_dataGridView.DataSource = Userinfolist;
+            //MysqlUtil.addInfor("name2","time2");
+            List<List<string>> infor = MysqlUtil.listInfor();
+            foreach (List<string> l in infor)
+            {
+                //作为一行输出
+                string line = "";
+                for (int i = 0; i < l.Count; i++)
+                {
+                    //姓名:reader[1],时间:reader[2]
+                    if(i == 0){
+                        line += "姓名:" + l[i];
+                    }else{
+                        line += ",签到时间:" + l[i];
+                    }
+                }
+                CheckResult_rtb.Text += line + System.Environment.NewLine;
+            }
+
         }
 
         //创建一个委托，是为访问DataGridView控件服务的。
@@ -165,6 +186,7 @@ namespace FaceCheckIn_App
         }
         private bool UserCheckIn(byte[] imageBytes)
         {
+
             bool flag = false;
             var image = Convert.ToBase64String(imageBytes);
             FaceSearch result = FaceDectectHelper.SearchDemo(image);
@@ -179,7 +201,10 @@ namespace FaceCheckIn_App
             if (result != null && result.score > 50)
             {
                 flag = true;
-                CheckResult_rtb.AppendText(String.Format("{0}\t 签到时间：{1}\n", result.user_info, DateTime.UtcNow.ToString("yyyy-MM-dd hh:mm:ss")));
+                var time = DateTime.UtcNow.ToString("yyyy-MM-dd hh:mm:ss");
+                CheckResult_rtb.AppendText(String.Format("{0}\t 签到时间：{1}\n", result.user_info, time));
+                //签到信息入库
+                MysqlUtil.addInfor(result.user_info, time);
                 SpeechHelper.Tts(String.Format("签到成功，欢迎{0}", result.user_info), option);
             }
             else
